@@ -41,17 +41,20 @@ class Specie{
         if(maxFit > this.maxFitness){
             this.bestClient = best;
             this.maxFitness = maxFit;
+            this.stagnantGens = 0;
         }
         else{
             this.stagnantGens++;
         }
     }
 
-    fitnessSharing(){
+    sortClients(){
         this.clients.sort((a,b)=>{
             b.fitness_score - a.fitness_score;
         });
-
+    }
+    
+    fitnessSharing(){
         for(let client of this.clients){
             client.fitness_score /= this.clients.length;
         }
@@ -95,15 +98,15 @@ class Specie{
     }
 
     getNextGen(n){
-        this.fitnessSharing();
         this.thanos();
+        this.fitnessSharing();
         this.addStats();
         let children = [];
         for(let i = 0;i < n;i++){
             children.push(this.getChild());
         }
-        this.clients = children.splice();
-        this.changeRep();
+        // this.clients = children.splice();
+        // this.changeRep();
         return children;
     }
 
