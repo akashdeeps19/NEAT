@@ -23,7 +23,7 @@ class Link{
         return link.from.id == this.from.id && link.to.id == this.to.id;
     }
 
-    copy(){
-        return new Link(this.from,this.to,this.weight,this.enabled,this.innov_no);
+    copy(from,to){
+        return new Link(from,to,this.weight,this.enabled,this.innov_no);
     }
 }

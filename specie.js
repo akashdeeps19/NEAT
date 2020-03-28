@@ -1,7 +1,7 @@
 class Specie{
     constructor(rep){
-        this.clients = [];
         this.rep = rep;
+        this.clients = [rep];
         this.avgFitness = 0;
         this.maxFitness = -Infinity;
         this.bestClient = undefined;
@@ -10,7 +10,11 @@ class Specie{
     }
 
     addClient(client){
-        if(this.rep.distance(client) < 3){
+        if(this.rep == undefined){
+            console.log(this);
+            console.log(client)
+        }
+        if(this.rep.genome.distance(client.genome) < 3){
             this.clients.push(client);
             return true;
         }
@@ -26,19 +30,20 @@ class Specie{
         this.rep = this.clients[r];
     }
 
-    addStats(){
-        let best = undefined;
-        let maxFit = -Infinity, sum = 0;
+    setAvgFitness(){
+        let sum = 0
         for(let client of this.clients){
             sum += client.fitness_score;
-            if(client.fitness_score > maxFit){
-                maxFit = client.fitness_score;
-                best = client;
-            }
         }
         this.totalFitness = sum;
         this.avgFitness = sum/(this.clients.length==0?1:this.clients.length);
-        if(maxFit > this.maxFitness){
+    }
+
+    sortClients(){
+        this.clients.sort((a,b)=>{
+            return b.fitness_score - a.fitness_score;
+        });
+        if(this.clients[0].fitness_score > this.maxFitness){
             this.bestClient = best;
             this.maxFitness = maxFit;
             this.stagnantGens = 0;
@@ -48,12 +53,6 @@ class Specie{
         }
     }
 
-    sortClients(){
-        this.clients.sort((a,b)=>{
-            b.fitness_score - a.fitness_score;
-        });
-    }
-    
     fitnessSharing(){
         for(let client of this.clients){
             client.fitness_score /= this.clients.length;
@@ -63,7 +62,8 @@ class Specie{
 
     thanos(){ //kills bottom half of clients :p
         if(this.clients.length <= 2)return;
-        for(let i = this.clients.length-1;i >= this.clients.length/2;i--)
+        let total = this.clients.length/2;
+        for(let i = this.clients.length-1;i > total;i--)
             this.clients.splice(i,1);
     }
 
@@ -89,7 +89,7 @@ class Specie{
                 childGenome = parent2.genome.crossover(parent1.genome);
             } 
             else {
-                childGenome = parent1.crossover(parent2);
+                childGenome = parent1.genome.crossover(parent2.genome);
             }
         }
         childGenome.mutate();
@@ -98,9 +98,9 @@ class Specie{
     }
 
     getNextGen(n){
-        this.thanos();
-        this.fitnessSharing();
-        this.addStats();
+        // this.thanos();
+        // this.fitnessSharing();
+        // this.addStats();
         let children = [];
         for(let i = 0;i < n;i++){
             children.push(this.getChild());
@@ -110,4 +110,29 @@ class Specie{
         return children;
     }
 
+}
+
+
+class Client{
+    constructor(genome){
+        this.states = [[0,0],[0,1],[1,0],[1,1]];
+        this.curr = 0;
+        this.state = this.states[0];
+        this.score = 0;
+        this.completed = false;
+        if(genome)this.genome = genome;
+        else{
+            this.genome = new Genome(2,1);
+            this.genome.createInitialNodes();
+            this.genome.createDenseGenome();
+        }
+        this.fitness_score = 0;
+    }
+    update(){
+        for(let i = 0;i < 4;i++){
+            let input = this.genome.getOutput(this.states[i])[0];
+            this.score += 1 - Math.pow((this.states[i][0]^this.states[i][1])*1.0 - input,2);
+        }
+        this.fitness_score = this.score;
+    }
 }

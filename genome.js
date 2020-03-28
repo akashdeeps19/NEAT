@@ -1,4 +1,4 @@
-const neat = new Neat();
+let neat = new Neat();
 
 class Genome{
     constructor(input_size,output_size){
@@ -86,36 +86,73 @@ class Genome{
     }
 
     // <====OUTPUT CALCULATION OF NEURAL NETWORK====> //
+    // getOutput(input){
+    //     for(let i = 0;i < input.length;i++)
+    //         this.nodes[i].output = input[i];
+
+    //     let output = [];
+    //     for(let i = this.input_size;i < this.input_size + this.output_size;i++)
+    //         output.push(this.getNodeOutput(i));
+
+    //     for(let i = 0;i < this.node_size;i++)
+    //         this.nodes[i].output = undefined;
+        
+    //     return output;
+    // }
+    // getNodeOutput(id){
+    //     if(this.nodes[id].output !== undefined)
+    //         return this.nodes[id].output; // Add sigmoid if you want
+    //     let output = 0;
+    //     for(let innov of this.node_adj[id]){
+    //         let link = this.links[innov];
+    //         if(link.enabled && link.to.id == id)
+    //             output += link.weight * this.getNodeOutput(link.from.id);
+    //     }
+    //     output += this.biases[this.nodes[id].layer-1];
+    //     output = this.sigmoid(output);
+    //     this.nodes[id].output = output;
+    //     return output;
+    // }
+
     getOutput(input){
+        let output = [];
         for(let i = 0;i < input.length;i++)
             this.nodes[i].output = input[i];
 
-        let output = [];
-        for(let i = this.input_size;i < this.input_size + this.output_size;i++)
+        for(let i = 1;i < this.layers_size-1;i++){
+            for(let id of this.layers[i]){
+                this.getNodeOutput(id);
+            }
+        }
+        for(let i = this.input_size;i < this.input_size + this.output_size;i++){
             output.push(this.getNodeOutput(i));
-
+        }
         for(let i = 0;i < this.node_size;i++)
             this.nodes[i].output = undefined;
         
         return output;
     }
+
     getNodeOutput(id){
-        if(this.nodes[id].output !== undefined)
-            return this.nodes[id].output; // Add sigmoid if you want
         let output = 0;
         for(let innov of this.node_adj[id]){
             let link = this.links[innov];
-            if(link.enabled && link.to.id == id)
-                output += link.weight * this.getNodeOutput(link.from.id);
+            if(link.enabled && link.to.id == id){
+                output += link.weight * this.nodes[link.from.id].output;
+            }
         }
-        output += this.biases[this.nodes[id].layer-1];
-        output = this.sigmoid(output);
         this.nodes[id].output = output;
+        output += this.biases[this.nodes[id].layer-1];
+        output = this.relu(output);
         return output;
     }
 
     sigmoid(x){
         return 1/(1 + Math.exp(-x));
+    }
+
+    relu(x){
+        return Math.max(0,x);
     }
 
     // <====MUTATION====> //
@@ -124,7 +161,7 @@ class Genome{
             this.mutateWeight();
         if(Math.random() < 0.05)
             this.mutateLink();
-        if(Math.random() < 0.03)
+        if(Math.random() < 0.01 && this.node_size <= 5)
             this.mutateNode();
     }
 
@@ -134,14 +171,14 @@ class Genome{
             if(Math.random() < 0.1)
                 link.weight = 2*Math.random()-1;
             else
-                link.weight += (2*this.randomG(5)-1)/5;// Gaussian distribution
+                link.weight += (2*this.randomG(50)-1);// Gaussian distribution
             link.weight = Math.min(1,Math.max(-1,link.weight)); // limits weight to (-1,1)
         }
         for(let i = 0;i < this.biases.length;i++){
             if(Math.random() < 0.1)
                 this.biases[i] = 2*Math.random()-1;
             else
-                this.biases[i] += (2*this.randomG(5)-1)/5;// Gaussian distribution
+                this.biases[i] += (2*this.randomG(50)-1);// Gaussian distribution
             this.biases[i] = Math.min(1,Math.max(-1,this.biases[i])); // limits bias to (-1,1)
         }
     }
@@ -167,15 +204,14 @@ class Genome{
 
         let link = undefined;
         while(!link){
-            let keys = Object.keys(this.layers);
-            let l1 = Math.floor(Math.random()*keys.length);
-            let l2 = Math.floor(Math.random()*keys.length);
+            let l1 = Math.floor(Math.random()*this.layers_size);
+            let l2 = Math.floor(Math.random()*this.layers_size);
             if(l1 == l2)continue;
 
             let from,to,n1,n2;
-            n1 = this.layers[keys[l1]][Math.floor(Math.random()*this.layers[keys[l1]].length)];
-            n2 = this.layers[keys[l2]][Math.floor(Math.random()*this.layers[keys[l2]].length)];
-            // console.log(n1,n2)
+            n1 = this.layers[l1][Math.floor(Math.random()*this.layers[l1].length)];
+            n2 = this.layers[l2][Math.floor(Math.random()*this.layers[l2].length)];
+            // console.log('while')
 
             if(l1 < l2){
                 from = this.nodes[n1];
@@ -186,7 +222,7 @@ class Genome{
                 to = this.nodes[n1];
             }
 
-            if(neat.getInnovNo(from,to) == -1){
+            if(!(neat.getInnovNo(from,to) in this.links)){
                 link = neat.createLink(from,to,2*Math.random()-1,true);
                 this.addLink(link);
             }
@@ -206,21 +242,29 @@ class Genome{
             let childLink;
             if(g2.links[innov]){ //matching genes
                 let link2 = g2.links[innov];
-                if(Math.random() < 0.5)
-                    childLink = link1.copy();
-                else
-                    childLink = link2.copy();
-                childLink.enabled = link1.enabled; // safer operation
+                if(Math.random() < 0.5){
+                    let from = this.nodes[link1.from.id];
+                    let to = this.nodes[link1.to.id];
+                    childLink = link1.copy(from,to);
+                }
+                else{
+                    let from = g2.nodes[link2.from.id];
+                    let to = g2.nodes[link2.to.id];
+                    childLink = link2.copy(from,to);
+                }
+                //childLink.enabled = link1.enabled; // safer operation
 
-                // if(!link1.enabled || !link2.enabled){ // <<UNCOMMENT THIS FOR EXACT PAPER IMPLEMENTAION!!>>
-                //     if(Math.random() < 0.75)
-                //         childLink.enabled = false;
-                //     else
-                //         childLink.enabled = true;
-                // }
+                if(!link1.enabled || !link2.enabled){ // <<UNCOMMENT THIS FOR EXACT PAPER IMPLEMENTAION!!>>
+                    if(Math.random() < 0.75)
+                        childLink.enabled = false;
+                    else
+                        childLink.enabled = true;
+                }
             } 
             else{
-                childLink = link1.copy();
+                let from = this.nodes[link1.from.id];
+                let to = this.nodes[link1.to.id];
+                childLink = link1.copy(from,to);
             }
             childGenome.addLink(childLink);
         }
@@ -259,7 +303,7 @@ class Genome{
                 disjoint++;
             }
         }
-        console.log(excess,disjoint,weight_diff);
+        // console.log(excess,disjoint,weight_diff);
 
         let species_dist = 1*excess/1 + 1*disjoint/1 + 1*weight_diff; //δ = c1 * E / N + c2 D / N + c3 * W
         return species_dist;
@@ -268,19 +312,17 @@ class Genome{
 
     copy(){
         const copyGenome = new Genome(this.input_size,this.output_size);
-        copyGenome.node_size = this.node_size;
-        copyGenome.link_size = this.link_size;
-        copyGenome.layers_size = this.layers_size;
-        for(let id in this.nodes)
-            copyGenome.nodes[id] = this.nodes[id].copy();
-        for(let innov in this.links)
-            copyGenome.links[innov] = this.links[innov].copy();
-        for(let layer in this.layers)
-            copyGenome.layers[layer] = this.layers[layer].slice();
-        for(let node in this.node_adj)
-            copyGenome.node_adj[node] = this.node_adj[node].slice();
+        for(let id in this.nodes){
+            copyGenome.addNode(this.nodes[id].copy());
+        }
         copyGenome.biases = this.biases.slice();
-
+        for(let innov in this.links){
+            const link = this.links[innov];
+            let from = copyGenome.nodes[link.from.id];
+            let to = copyGenome.nodes[link.to.id];
+            let copyLink = link.copy(from,to);
+            copyGenome.addLink(copyLink);
+        }
         return copyGenome;
     }
 }

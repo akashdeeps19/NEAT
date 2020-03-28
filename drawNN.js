@@ -1,30 +1,34 @@
 let gen;
-const g1 = new Genome(3,1);
-g1.createInitialNodes();
-g1.createDenseGenome();
-const g2 = new Genome(3,1);
-g2.createInitialNodes();
-g2.createDenseGenome();
+// const g1 = new Genome(3,1);
+// g1.createInitialNodes();
+// g1.createDenseGenome();
+// const g2 = new Genome(3,1);
+// g2.createInitialNodes();
+// g2.createDenseGenome();
 
-g1.shiftLayer(1);
-g1.addNode(new Node(4,1));
-g2.shiftLayer(1);
-g2.addNode(new Node(4,1));
-g2.shiftLayer(2);
-g2.addNode(new Node(5,2));
+// g1.shiftLayer(1);
+// g1.addNode(new Node(4,1));
+// g2.shiftLayer(1);
+// g2.addNode(new Node(4,1));
+// g2.shiftLayer(2);
+// g2.addNode(new Node(5,2));
 
-g1.links[1].enabled = false;
-g2.links[1].enabled = false;
+// g1.links[1].enabled = false;
+// g2.links[1].enabled = false;
 
-g1.addLink(neat.createLink(g1.nodes[1],g1.nodes[4],1,true));
-g1.addLink(neat.createLink(g1.nodes[4],g1.nodes[3],1,true));
-g2.addLink(neat.createLink(g2.nodes[1],g2.nodes[4],2,true));
-g2.addLink(neat.createLink(g2.nodes[4],g2.nodes[3],2,false));
-g2.addLink(neat.createLink(g2.nodes[4],g2.nodes[5],2,true));
-g2.addLink(neat.createLink(g2.nodes[5],g2.nodes[3],2,true));
-g1.addLink(neat.createLink(g1.nodes[0],g1.nodes[4],1,true));
-g2.addLink(neat.createLink(g2.nodes[2],g2.nodes[4],2,true));
-g2.addLink(neat.createLink(g2.nodes[0],g2.nodes[5],2,true));
+// g1.addLink(neat.createLink(g1.nodes[1],g1.nodes[4],1,true));
+// g1.addLink(neat.createLink(g1.nodes[4],g1.nodes[3],1,true));
+// g2.addLink(neat.createLink(g2.nodes[1],g2.nodes[4],2,true));
+// g2.addLink(neat.createLink(g2.nodes[4],g2.nodes[3],2,false));
+// g2.addLink(neat.createLink(g2.nodes[4],g2.nodes[5],2,true));
+// g2.addLink(neat.createLink(g2.nodes[5],g2.nodes[3],2,true));
+// g1.addLink(neat.createLink(g1.nodes[0],g1.nodes[4],1,true));
+// g2.addLink(neat.createLink(g2.nodes[2],g2.nodes[4],2,true));
+// g2.addLink(neat.createLink(g2.nodes[0],g2.nodes[5],2,true));
+
+
+const population = new Population(100);
+population.initialPop();
 
 function setup(){
     createCanvas(800,600);   
@@ -33,6 +37,32 @@ function setup(){
 function draw(){
     background(50);
     drawGenome(gen);
+}
+
+function keyPressed(){
+    if(key === ' '){
+        noLoop();
+    }
+    if(keyCode === 69){
+        for(let i = 0;i < 1;i++)
+            evolve();
+    }
+
+    return false;
+}
+
+
+
+function newClient(){
+    return new Client();
+}
+
+function evolve(){
+    for(let client of population.clients){
+        client.update();
+        // console.log(client.fitness_score)
+    }
+    population.evolve();
 }
 
 function drawGenome(g){
