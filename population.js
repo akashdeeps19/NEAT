@@ -1,3 +1,4 @@
+let fault;
 class Population{
     constructor(size_){
         this.clients = [];
@@ -5,15 +6,24 @@ class Population{
         this.generation = 1;
         this.species = [];
         this.avgFitness = 0;
+        this.totalFitness = 0;
         this.maxFitness = -Infinity;
         this.bestClient = undefined;
     }
 
     initialPop(){
         for(let i = 0;i < this.population_size;i++){
-            this.clients.push(new Client());
+            this.clients.push(new Client(this.randomGenome()));
         }
         this.speciate();
+    }
+
+    randomGenome(){
+        const g = new Genome(5,2);
+        g.createInitialNodes();
+        g.createDenseGenome();
+        g.mutate();
+        return g
     }
 
     speciate(){
@@ -31,6 +41,10 @@ class Population{
                 this.species.push(new Specie(client));
             }
         }
+        for(let i = this.species.length-1;i >= 0;i--){
+            if(this.species[i].clients.length == 0)
+                this.species.splice(i,1);
+        }
         for(let specie of this.species){
             specie.changeRep();
         }
@@ -39,18 +53,22 @@ class Population{
 
     evolve(){
         // this.speciate();
-        this.killSpecies();
         this.sortSpecies();
-        this.avgFitness = this.getAvgFitness();
-        let total = this.avgFitness==0?1:this.avgFitness*this.species.length;
+        this.killSpecies();
+        // if(!this.avgFitness){console.log(population.species.slice());return;}
+        // this.avgFitness = this.getAvgFitness();
+        let total = this.totalFitness;
         if((this.generation-1)%1 == 0)
             this.printStats();
         let children = [];
+        children.push(new Client(this.bestClient.genome.copy()));
+        children[0].genome.mutate();
         for(let specie of this.species){
-            children.push(new Client(specie.bestClient.genome.copy()))
+            children.push(new Client(specie.bestClient.genome.copy()));
             let n = Math.floor(specie.avgFitness/total*this.population_size)-1;
             children = children.concat(specie.getNextGen(n));
         }
+        children.pop()
         while(children.length < this.population_size){
             let child = this.species[0].getChild();
             children.push(child);
@@ -62,15 +80,18 @@ class Population{
     }
 
     killSpecies(){
+        for(let specie of this.species){
+            specie.fitnessSharing();
+            specie.thanos();
+            specie.setAvgFitness()
+        }
+        this.avgFitness = this.getAvgFitness();
+        let total = this.totalFitness;
         for(let i = this.species.length-1;i >= 0;i--){
-            this.species[i].sortClients();
-            this.species[i].thanos();
-            this.species[i].fitnessSharing();
-            this.species[i].addStats();
-            this.avgFitness = this.getAvgFitness();
-            let total = this.avgFitness==0?1:this.avgFitness*this.species.length;
-            let avg = this.species[i].avgFitness/total * this.clients.length; 
-            if((this.species[i].stagnantGens > 15 || avg < 1) && this.species.length > 1){
+            let n = this.species[i].avgFitness/total * this.population_size; 
+            if((this.species[i].stagnantGens > 15 || n < 1) && this.species.length > 1){
+                // if(this.species[i].stagnantGens > 15 && i == 0)
+                //     console.log('best is stagnant')
                 this.species.splice(i,1);
             }
         }
@@ -87,28 +108,29 @@ class Population{
     getAvgFitness(){
         let sum = 0;
         for(let specie of this.species){
+            if(!specie.avgFitness){
+                fault = specie;
+                console.log('fault')
+            }
             sum += specie.avgFitness;
         }
+        this.totalFitness = sum;
         return sum/(this.species.length == 0?1:this.species.length)
     }
 
     getBestClient(){
-        let maxScore = -Infinity;
-        let best = undefined;
-        for(let specie of this.species){
-            if(specie.bestClient.score > maxScore){
-                maxScore = specie.bestClient.score;
-                best = specie.bestClient;
-            }
+        if(this.species[0].maxFitness > this.maxFitness){
+            this.maxFitness = this.species[0].maxFitness;
+            return this.species[0].bestClient; 
         }
-        return best; 
+        return this.bestClient;
     }
 
     printStats(){
         console.log(`<==== GENERATION : ${this.generation} ====>`);
         console.log(`Max Fitness : ${this.species[0].maxFitness}`);
         console.log(`Avg Fitness : ${this.avgFitness}`);
-        
+        console.log(`Mutations : ${mutations}`)
         console.log(`No of Species : ${this.species.length}`);
         this.bestClient = this.getBestClient();
         console.log(`Max score : ${this.bestClient.score}`);
@@ -131,6 +153,7 @@ class Population{
  *  species best client
  *  sort species based on max fitness
  *  species fitness sharing
+ *  kill species clients
  *  species average fitness
  *  kill species
  *  update population stats
