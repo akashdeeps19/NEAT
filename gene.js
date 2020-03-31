@@ -19,10 +19,6 @@ class Link{
         this.innov_no = innov_no;
     }
 
-    equals(link){
-        return link.from.id == this.from.id && link.to.id == this.to.id;
-    }
-
     copy(from,to){
         return new Link(from,to,this.weight,this.enabled,this.innov_no);
     }

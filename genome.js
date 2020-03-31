@@ -1,22 +1,17 @@
-let neat = new Neat();
-let mutations = 0;
-
 class Genome{
-    constructor(input_size,output_size){
+    constructor(input_size,output_size,neat){
         this.input_size = input_size;
         this.output_size = output_size;
         this.node_size = 0;
         this.link_size = 0;
         this.layer_size = 0;
-        this.nodes = []; //KEY -> node_id VALUE -> node 
-        this.biases = [];
-        this.links = []; //KEY -> innovation_no. VALUE -> link
-        this.node_adj = []; //KEY -> node_id  VALUE -> Array of innovation no.s, the node is connected
-        this.layers = []; //KEY -> layer VALUE -> Array of node_ids
+        this.nodes = []; //INDEX -> node_id VALUE -> node 
+        this.biases = [];//INDEX -> layer VALUE -> bias
+        this.links = []; //VALUE -> link
+        this.node_adj = []; //INDEX -> node_id  VALUE -> Array of innovation no.s, the node is connected
+        this.layers = []; //INDEX -> layer VALUE -> Array of node_ids
         this.link_map = {}; //KEY -> innovation_no. VALUE -> link_index in this.links
-        
-        // this.createInitialNodes();
-        // this.createDenseGenome();
+        this.neat = neat;
     }
 
     // <=====HELPERS=====> //
@@ -45,8 +40,6 @@ class Genome{
         this.links[i+1] = link;
 
         this.link_map[link.innov_no] = i+1;
-
-        if(!this.node_adj[link.from.id] || !this.node_adj[link.to.id])console.log(this)
 
         this.node_adj[link.from.id].push(link.innov_no);
         this.node_adj[link.to.id].push(link.innov_no);
@@ -106,42 +99,14 @@ class Genome{
     createDenseGenome(){
         for(let i = 0;i < this.input_size;i++){
             for(let j = this.input_size;j < this.input_size+this.output_size;j++){
-                const link = neat.createLink(this.nodes[i],this.nodes[j],2*Math.random()-1,true);
+                const link = this.neat.createLink(this.nodes[i],this.nodes[j],2*Math.random()-1,true);
                 this.addLink(link);
             }
         }
     }
 
     // <====OUTPUT CALCULATION OF NEURAL NETWORK====> //
-    // getOutput(input){
-    //     for(let i = 0;i < input.length;i++)
-    //         this.nodes[i].output = input[i];
-
-    //     let output = [];
-    //     for(let i = this.input_size;i < this.input_size + this.output_size;i++)
-    //         output.push(this.getNodeOutput(i));
-
-    //     for(let i = 0;i < this.node_size;i++)
-    //         this.nodes[i].output = undefined;
-        
-    //     return output;
-    // }
-    // getNodeOutput(id){
-    //     if(this.nodes[id].output !== undefined)
-    //         return this.nodes[id].output; // Add sigmoid if you want
-    //     let output = 0;
-    //     for(let innov of this.node_adj[id]){
-    //         let link = this.links[innov];
-    //         if(link.enabled && link.to.id == id)
-    //             output += link.weight * this.getNodeOutput(link.from.id);
-    //     }
-    //     output += this.biases[this.nodes[id].layer-1];
-    //     output = this.sigmoid(output);
-    //     this.nodes[id].output = output;
-    //     return output;
-    // }
-
-    getOutput(input){
+    predict(input){
         let output = [];
         for(let i = 0;i < input.length;i++)
             this.nodes[i].output = input[i];
@@ -184,11 +149,11 @@ class Genome{
 
     // <====MUTATION====> //
     mutate(){
-        if(Math.random() < 0.8)
+        if(Math.random() < this.neat.mwr)
             this.mutateWeight();
-        if(Math.random() < 0.05)
+        if(Math.random() < this.neat.mlr)
             this.mutateLink();
-        if(Math.random() < 0.01)// && this.node_size <= 5)
+        if(Math.random() < this.neat.mnr)
             this.mutateNode();
     }
 
@@ -214,16 +179,14 @@ class Genome{
         let link = this.links[r];
         let node = new Node(this.node_size, link.from.layer + 1);
         link.enabled = false;
-        let link1 = neat.createLink(link.from,node,1,true);
-        let link2 = neat.createLink(node,link.to,link.weight,true);
+        let link1 = this.neat.createLink(link.from,node,1,true);
+        let link2 = this.neat.createLink(node,link.to,link.weight,true);
         if(node.layer == link.to.layer){
             this.shiftLayer(node.layer);
         }
         this.addNode(node);
         this.addLink(link1);
         this.addLink(link2);
-        mutations++;
-        // console.log('node mutate')
     }
 
     mutateLink(){
@@ -248,18 +211,16 @@ class Genome{
                 to = this.nodes[n1];
             }
 
-            if(!(neat.getInnovNo(from,to) in this.link_map)){
-                link = neat.createLink(from,to,2*Math.random()-1,true);
+            if(!(this.neat.getInnovNo(from,to) in this.link_map)){
+                link = this.neat.createLink(from,to,2*Math.random()-1,true);
                 this.addLink(link);
             }
         }
-        mutations++;
-        // console.log('link mutate')
     }
 
     // <====GENOME AS OUTPUT OR PARAM====> //
     crossover(g2){
-        let childGenome = new Genome(this.input_size,this.output_size);
+        let childGenome = new Genome(this.input_size,this.output_size,this.neat);
         for(let node of this.nodes){
             childGenome.addNode(node.copy());
         }
@@ -273,28 +234,16 @@ class Genome{
                     let from = childGenome.nodes[link1.from.id];
                     let to = childGenome.nodes[link1.to.id];
                     childLink = link1.copy(from,to);
-                    if(!from || !to){
-                        console.log(link1.from.id,link1.to.id);
-                        console.log('this', this);
-                        console.log('g2',g2)
-                        console.log('child',childGenome);
-                    }
-                }else{
+                }
+                else{
                     let from = childGenome.nodes[link2.from.id];
                     let to = childGenome.nodes[link2.to.id];
                     childLink = link2.copy(from,to);
-                    if(!from || !to){
-                        console.log(link2.from.id,link2.to.id);
-                        console.log('this', this);
-                        console.log('g2',g2)
-                        console.log('child',childGenome);
-                    }
-                    
                 }
                 //childLink.enabled = link1.enabled; // safer operation
 
                 if(!link1.enabled || !link2.enabled){ // <<UNCOMMENT THIS FOR EXACT PAPER IMPLEMENTAION!!>>
-                    if(Math.random() < 0.75)
+                    if(Math.random() < this.neat.plr)
                         childLink.enabled = false;
                     else
                         childLink.enabled = true;
@@ -304,12 +253,6 @@ class Genome{
                 let from = childGenome.nodes[link1.from.id];
                 let to = childGenome.nodes[link1.to.id];
                 childLink = link1.copy(from,to);
-                if(!from || !to){
-                    console.log(link1.from.id,link1.to.id);
-                    console.log('this', this);
-                    console.log('g2',g2)
-                    console.log('child',childGenome);
-                }
             }
             
             childGenome.addLink(childLink);
@@ -346,17 +289,16 @@ class Genome{
         
         excess = g1.link_size - i1;
         weight_diff /= similar==0?1:similar;
-        let N = g2.link_size - 20;
+        let N = g2.link_size - this.neat.lgn;
         N = Math.max(1,N);
-        // if(excess + disjoint > 3)
-        // console.log(similar,disjoint,excess,weight_diff);
-        let species_dist = 1*excess/N + 1*disjoint/N + 0.5*weight_diff; //δ = c1 * E / N + c2 * D / N + c3 * W
+        
+        let species_dist = this.neat.c1*excess/N + this.neat.c2*disjoint/N + this.neat.c3*weight_diff; //δ = c1 * E / N + c2 * D / N + c3 * W
         return species_dist;
         
     }
 
     copy(){
-        const copyGenome = new Genome(this.input_size,this.output_size);
+        const copyGenome = new Genome(this.input_size,this.output_size,this.neat);
         for(let node of this.nodes){
             copyGenome.addNode(node.copy());
         }
