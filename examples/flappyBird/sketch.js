@@ -7,6 +7,7 @@ let allBirds = [];
 let pipes = [];
 // A frame counter to determine when to add a pipe
 let counter = 0;
+let dead = false;
 
 let population;
 
@@ -14,31 +15,44 @@ let population;
 let speedSlider;
 let speedSpan;
 let highScoreSpan;
-let allTimeHighScoreSpan;
+let allTimeHighScoreSpan, statsSpan,tipSpan;
 
 // All time high score
 let highScore = 0;
 
 // Training or just showing the current best
 let runBest = false;
-let runBestButton;
+let playing = false;
+let showNN = false;
+let runBestButton,playButton, showNNButton;
+let player;
 let bestBird;
-let gen;
+let gen,stats;
+let backgroundImg, birdImg;
+let playerGravity = 0.5
 
 function preload(){
     gen = loadJSON('best_client.json');
+    backgroundImg = loadImage('./img/background.png');
+    birdImg = loadImage('./img/bird3.png')
 }
 
 function setup() {
-  let canvas = createCanvas(600, 400);
+  let canvas = createCanvas(700, 400);
   canvas.parent('canvascontainer');
   // Access the interface elements
   speedSlider = select('#speedSlider');
   speedSpan = select('#speed');
+  tipSpan = select('#tip')
   highScoreSpan = select('#hs');
   allTimeHighScoreSpan = select('#ahs');
+  statsSpan = select('#stats');
   runBestButton = select('#best');
   runBestButton.mousePressed(toggleState);
+  playButton = select('#play');
+  playButton.mousePressed(togglePlay);
+  showNNButton = select('#showNN');
+  showNNButton.mousePressed(toggleShowNN);
 
   // Create a population
   for (let i = 0; i < totalPopulation; i++) {
@@ -49,6 +63,8 @@ function setup() {
   population.initialPop();
   let g = population.deserialize(gen);
   bestBird = new Bird(g);
+  player = new Bird();
+  player.gravity = playerGravity;
 }
 
 // Toggle the state of the simulation
@@ -58,23 +74,63 @@ function toggleState() {
   if (runBest) {
     resetGame();
     runBestButton.html('continue training');
+    if(playing)togglePlay()
     // Go train some more
   } else {
     nextGeneration();
-    runBestButton.html('run best');
+    runBestButton.html('run pre-trained bird');
+  }
+}
+
+function togglePlay(){
+  playing = !playing;
+  if (playing) {
+    resetGame();
+    speedSlider.value(1)
+    playButton.html('train');
+    tipSpan.html('Press space to jump')
+    // Go train some more
+  } else {
+    nextGeneration();
+    playButton.html('play');
+    tipSpan.html('')
+    if(dead){
+      dead = false;
+      loop()
+    }
+  }
+}
+
+function toggleShowNN(){
+  showNN = !showNN;
+  if(showNN){
+    showNNButton.html('Back to Game');
+  }
+  else{
+    showNNButton.html('Show Neural Network');
   }
 }
 
 
-
 function draw() {
-  background(0);
+  // background(0);
+  if(showNN){
+    background(0);
+    let g;
+    if(runBest){
+      g = bestBird.genome
+    }
+    else{
+      g = activeBirds.length == 0?bestBird.genome:activeBirds[0].genome
+    }
+    drawGenome(g,50,50,height-50,width-50);
+    return;
+  }
+  image(backgroundImg,0,0,width,height);
 
   // Should we speed up cycles per frame
-  
   let cycles = speedSlider.value();
   speedSpan.html(cycles);
-
 
   // How many times to advance the game
   for (let n = 0; n < cycles; n++) {
@@ -87,7 +143,32 @@ function draw() {
       }
     }
     // Are we just running the best bird
-    if (runBest) {
+    if(playing){
+      player.update();
+      for (let j = 0; j < pipes.length; j++) {
+        // Start over, bird hit pipe
+        if (pipes[j].hits(player)) {
+          textSize(40);
+          textAlign(CENTER,CENTER);
+          fill(255);
+          text('Click to Play',width/2,height/2);
+          dead = true;
+          noLoop();
+          break;
+        }
+      }
+
+      if (player.bottomTop()) {
+        textSize(40);
+        textAlign(CENTER,CENTER);
+        fill(255);
+        text('Click to Play',width/2,height/2);
+        dead = true;
+        noLoop();
+      }
+
+    }
+    else if (runBest) {
       bestBird.think(pipes);
       bestBird.update();
       for (let j = 0; j < pipes.length; j++) {
@@ -128,15 +209,18 @@ function draw() {
 
     // Add a new pipe every so often
     if (counter % 75 == 0) {
-        pipes.push(new Pipe());
-      }
-    counter++;
+      pipes.push(new Pipe());
     }
+    counter++;
+    
+    }
+    
 
+    
   // What is highest score of the current population
   let tempHighScore = 0;
   // If we're training
-  if (!runBest) {
+  if (!runBest && !playing) {
     // Which is the best bird?
     let tempBestBird = null;
     for (let i = 0; i < activeBirds.length; i++) {
@@ -150,11 +234,17 @@ function draw() {
     // Is it the all time high scorer?
     if (tempHighScore > highScore) {
       highScore = tempHighScore;
-      bestBird = tempBestBird;
+      // bestBird = tempBestBird;
     }
-  } else {
+  } else if(!playing){
     // Just one bird, the best one so far
     tempHighScore = bestBird.score;
+    if (tempHighScore > highScore) {
+      highScore = tempHighScore;
+    }
+  }
+  else{
+    tempHighScore = player.score;
     if (tempHighScore > highScore) {
       highScore = tempHighScore;
     }
@@ -168,8 +258,10 @@ function draw() {
   for (let i = 0; i < pipes.length; i++) {
     pipes[i].show();
   }
-
-  if (runBest) {
+  if(playing){
+    player.show();
+  }
+  else if (runBest) {
     bestBird.show();
   } else {
     for (let i = 0; i < activeBirds.length; i++) {
@@ -186,6 +278,20 @@ function keyPressed(){
   if(key == 'S'){
     population.saveClient(activeBirds[0].genome);
   }
+  if(key == ' '){
+    if(playing){
+      player.up();
+    }
+  }
+  return false
+}
+
+function mousePressed(){
+  if(playing && dead){
+    dead = false;
+    loop();
+    resetGame();
+  }
 }
 
 function resetGame() {
@@ -194,16 +300,28 @@ function resetGame() {
   if (bestBird && runBest) {
     bestBird.score = 0;
   }
+  if(playing){
+    player = new Bird()
+    player.gravity = playerGravity;
+  }
   pipes = [];
 }
-
+function printStats(){
+  statsSpan.html(`
+  </br><==== GENERATION : ${stats.gen} ====></br>
+    No of Species : ${stats.species}</br>
+    Avg Fitness : ${stats.avg_fitness}</br>
+    Max score : ${stats.max_score}</br>
+  ` + statsSpan.html());
+}
 // Create the next generation
 function nextGeneration() {
   resetGame();
   // Normalize the fitness values 0-1
   normalizeFitness(population.clients);
   // Generate a new set of birds
-  population.evolve();
+  stats = population.evolve();
+  printStats()
   activeBirds = population.clients.slice();
   // Copy those birds to another array
 }

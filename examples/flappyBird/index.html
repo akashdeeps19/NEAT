@@ -16,21 +16,56 @@
     <script src="pipe.js"></script>
     <script src="bird.js"></script>
     <script src="sketch.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Raleway:wght@500&display=swap" rel="stylesheet"> 
     
     <!-- <link rel="stylesheet" type="text/css" href="style.css"> -->
-    <style> body {padding: 0; margin: 0;} </style>
+    <style>
+
+      h2{
+        font-family: 'Abril Fatface', cursive;
+        text-align: center;
+      }
+      p{
+        font-family: 'Raleway', sans-serif;
+        text-align: center;
+      }
+      body {
+        padding: 0;
+        margin: 0;
+        background-color:aliceblue;
+      } 
+
+      button{
+        font-family: 'Raleway', sans-serif;
+        padding: 10px;
+        background-color: deepskyblue;
+        border-radius: 4px;
+      }
+
+      #canvascontainer{
+        text-align: center;
+      }
+
+    </style>
   </head>
   <body>
+    <h2>Flappy Bird NEAT AI</h2>
     <div id="canvascontainer"></div>
     <p>
       speed: <input id="speedSlider" type="range" min="1" max="10" value="1"> <span id="speed">1</span>
-      <br/> high score: <span id="hs">0</span>
+      <br/> score: <span id="hs">0</span>
       <br/> all time high score: <span id="ahs">0</span>
     </p>
     <p>
-      <button id="best">run best so far</button>
+      <button id="best">run pre-trained bird</button>
+      <button id="showNN">Show Neural Network</button>
     </p>
-  
+    <p>
+      <button id="play">PLAY</button>
+    </p>
+    <p id="tip"></p>
+    <p id="stats"></p>
   
   </body>
 </html>

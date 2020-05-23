@@ -25,16 +25,16 @@
 // g2.addLink(neat.createLink(g2.nodes[2],g2.nodes[4],2,true));
 // g2.addLink(neat.createLink(g2.nodes[0],g2.nodes[5],2,true));
 let population;
-let population_size = 500;
+let population_size = 100;
 let input_size = 2;
 let output_size = 1;
 
 let x = -100,y = 0,h = 600,w = 1000,scal = 1;
 
 let bestClient;
-function preload(){
-    bestClient = loadJSON('best_client.json');
-}
+// function preload(){
+//     bestClient = loadJSON('best_client.json');
+// }
 
 function setup(){
     createCanvas(800,600); 
@@ -44,7 +44,7 @@ function setup(){
     }
     population = new Population(input_size,output_size,clients.slice());
 
-    bestClient = new Client(population.deserialize(bestClient));
+    // bestClient = new Client(population.deserialize(bestClient));
 }
 
 function draw(){

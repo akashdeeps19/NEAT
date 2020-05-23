@@ -175,6 +175,7 @@ class Genome{
     }
 
     mutateNode(){
+        if(this.link_size == 0)return;
         let r = Math.floor(Math.random()*this.link_size);
         let link = this.links[r];
         let node = new Node(this.node_size, link.from.layer + 1);
@@ -265,10 +266,11 @@ class Genome{
         let disjoint = 0,excess,weight_diff = 0,similar = 0;
 
         let g1 = this,g2 = other; //g1 -> genome with max innov g2 -> genome with min innov
-        if(this.links[this.link_size-1].innov_no < other.links[other.link_size-1].innov_no){
-            g1 = other;
-            g2 = this;
-        }
+        if(other.link_size != 0)
+            if(this.link_size == 0 || this.links[this.link_size-1].innov_no < other.links[other.link_size-1].innov_no){
+                g1 = other;
+                g2 = this;
+            }
 
         while(i1 < g1.link_size && i2 < g2.link_size){
             if(g1.links[i1].innov_no == g2.links[i2].innov_no){
@@ -291,7 +293,8 @@ class Genome{
         weight_diff /= similar==0?1:similar;
         let N = g2.link_size - this.neat.lgn;
         N = Math.max(1,N);
-        
+        // console.log(excess,disjoint,weight_diff)
+        // if(!similar)return 100;
         let species_dist = this.neat.c1*excess/N + this.neat.c2*disjoint/N + this.neat.c3*weight_diff; //δ = c1 * E / N + c2 * D / N + c3 * W
         return species_dist;
         

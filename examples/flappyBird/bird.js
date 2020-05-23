@@ -3,7 +3,7 @@ class Bird {
         // position and size of bird
         this.x = 64;
         this.y = height / 2;
-        this.r = 12;
+        this.r = 20;
     
         // Gravity, lift and velocity
         this.gravity = 0.8;
@@ -23,9 +23,11 @@ class Bird {
     
       // Display the bird
       show() {
-        fill(255, 100);
-        stroke(255);
-        ellipse(this.x, this.y, this.r * 2, this.r * 2);
+        // fill(255, 100);
+        // stroke(255);
+        // ellipse(this.x, this.y, this.r * 2, this.r * 2);
+        birdImg.resize(this.r*2, this.r*2)
+        image(birdImg,this.x-birdImg.width/2,this.y-birdImg.height/2)//,this.r*2,this.r*2)
       }
     
       // This is the key function now that decides

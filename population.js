@@ -23,7 +23,7 @@ class Population{
         for(let client of this.clients){
             client.genome = this.randomGenome();
         }
-        this.speciate();
+        // this.speciate();
     }
 
     randomGenome(){
@@ -53,22 +53,24 @@ class Population{
             if(this.species[i].clients.length == 0)
                 this.species.splice(i,1);
         }
-        for(let specie of this.species){
-            specie.changeRep();
-        }
+        // for(let specie of this.species){
+        //     specie.changeRep();
+        // }
     }
 
     evolve(){
+        this.speciate();
         this.sortSpecies();
         this.killSpecies();
-        // this.setAvgFitness();
+        this.setAvgFitness();
         this.setBestClient();
-        this.printStats();
+        // this.printStats();
+        let stats = this.printStats()
 
         let children = [];
 
-        children.push(this.bestClient.copy()); //copy and mutate the all time best client into next generation
-        children[0].genome.mutate();
+        // children.push(this.bestClient.copy()); //copy and mutate the all time best client into next generation
+        // children[0].genome.mutate();
 
         for(let specie of this.species){
             children.push(specie.bestClient.copy());
@@ -76,9 +78,9 @@ class Population{
             children = children.concat(specie.getNextGen(n));
         }
 
-        while(children.length > this.population_size){
-            children.pop();
-        }
+        // while(children.length > this.population_size){
+        //     children.pop();
+        // }
         while(children.length < this.population_size){
             let child = this.species[0].getChild();
             children.push(child);
@@ -87,14 +89,15 @@ class Population{
         this.clients = [];
         this.clients = children.slice();
         this.generation++;
-        this.speciate();
+        // this.speciate();
+        return stats;
     }
 
     sortSpecies(){
         for(let specie of this.species)
             specie.sortClients();
         this.species.sort((a,b)=>{
-            return b.maxFitness - a.maxFitness;
+            return b.MaxFitness - a.MaxFitness;
         });
     }
 
@@ -108,7 +111,7 @@ class Population{
         let total = this.totalFitness;
         for(let i = this.species.length-1;i >= 0;i--){
             let n = this.species[i].avgFitness/total * this.population_size; 
-            if((this.species[i].stagnantGens > 15 || n < 1) && this.species.length > 1){
+            if((this.species[i].stagnantGens > 15 || n < 1) && this.species.length > 2){
                 this.species.splice(i,1);
             }
         }
@@ -124,7 +127,7 @@ class Population{
     }
 
     setBestClient(){
-        this.currMaxFitness = this.species[0].maxFitness;
+        this.currMaxFitness = this.species[0].currMaxFitness;
         this.currBestClient = this.species[0].clients[0];
         if(this.currMaxFitness > this.maxFitness){
             this.maxFitness = this.currMaxFitness; 
@@ -135,12 +138,20 @@ class Population{
     printStats(n=1){
         if(this.generation%n && this.generation != 1)return;
 
-        console.log(`\n<==== GENERATION : ${this.generation} ====>`);
-        console.log(`Max Fitness : ${this.currMaxFitness}`);
-        console.log(`Avg Fitness : ${this.avgFitness}`);
-        console.log(`No of Species : ${this.species.length}`);
-        console.log(`Max score : ${this.bestClient.score}`);
+        // console.log(`\n<==== GENERATION : ${this.generation} ====>`);
+        // console.log(`Max Fitness : ${this.currMaxFitness}`);
+        // console.log(`Avg Fitness : ${this.avgFitness}`);
+        // console.log(`No of Species : ${this.species.length}`);
+        // console.log(`Max score : ${this.bestClient.score}`);
+
+        return {
+            gen : this.generation,
+            species : this.species.length,
+            avg_fitness : this.avgFitness,
+            max_score : this.bestClient.score
+        }
     }
+
 
     // <==== SERIALIZE ====> //
     saveClient(genome,fileName = 'best_client.json'){

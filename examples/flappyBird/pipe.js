@@ -19,7 +19,7 @@ class Pipe {
     }
   
     show() {
-      fill(255);
+      fill(0,255,0);
       rectMode(CORNER);
       rect(this.x, 0, this.w, this.top);
       rect(this.x, height - this.bottom, this.w, this.bottom);

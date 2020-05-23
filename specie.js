@@ -9,6 +9,8 @@ class Specie{
         this.avgFitness = 0;
         this.maxFitness = -Infinity;
         this.bestClient = undefined;
+        this.currMaxFitness = -Infinity;
+        this.currBestClient = undefined;
         this.totalFitness = 0;
         this.stagnantGens = 0;
     }
@@ -36,6 +38,8 @@ class Specie{
         this.clients.sort((a,b)=>{
             return b.fitness_score - a.fitness_score;
         });
+        this.currMaxFitness = this.clients[0].fitness_score;
+        this.currBestClient = this.clients[0];
         if(this.clients[0].fitness_score > this.maxFitness){
             this.bestClient = this.clients[0];
             this.maxFitness = this.clients[0].fitness_score;
